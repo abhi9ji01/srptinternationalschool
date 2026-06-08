@@ -1,7 +1,6 @@
 # Backend — Fastify REST API
 
 Standalone Node.js API for the School Management System. MySQL via `mysql2` (raw parameterized SQL), JWT auth, role-based authorization.
-
 ## Setup
 
 ```bash
