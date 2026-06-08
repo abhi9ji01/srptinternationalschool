@@ -59,7 +59,19 @@ try {
     await getPool().query("SELECT 1");
     app.log.info("Database connection OK");
   } catch (e) {
-    app.log.warn("Database not reachable yet: " + e.message);
+    app.log.error(
+      {
+        code: e.code,
+        errno: e.errno,
+        sqlState: e.sqlState,
+        address: e.address,
+        port: e.port,
+        host: process.env.DATABASE_HOST,
+        db: process.env.DATABASE_NAME,
+        msg: e.message,
+      },
+      "Database connection FAILED"
+    );
   }
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info(`API listening on http://localhost:${port}`);
