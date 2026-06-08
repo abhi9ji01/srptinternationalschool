@@ -1,0 +1,42 @@
+import auth from "./auth.js";
+import academics from "./academics.js";
+import students from "./students.js";
+import teachers from "./teachers.js";
+import attendance from "./attendance.js";
+import exams from "./exams.js";
+import assignments from "./assignments.js";
+import fees from "./fees.js";
+import hr from "./hr.js";
+import library from "./library.js";
+import transport from "./transport.js";
+import hostel from "./hostel.js";
+import health from "./health.js";
+import communication from "./communication.js";
+import ptm from "./ptm.js";
+import timetable from "./timetable.js";
+import misc from "./misc.js";
+import reports from "./reports.js";
+import system from "./system.js";
+
+/** Registers every API module under the parent prefix (/api). */
+export default async function registerRoutes(app) {
+  await app.register(auth);
+  await app.register(academics);
+  await app.register(students);
+  await app.register(teachers);
+  await app.register(attendance);
+  await app.register(exams);
+  await app.register(assignments);
+  await app.register(fees);
+  await app.register(hr);
+  await app.register(library);
+  await app.register(transport);
+  await app.register(hostel);
+  await app.register(health);
+  await app.register(communication);
+  await app.register(ptm);
+  await app.register(timetable);
+  await app.register(misc);
+  await app.register(reports);
+  await app.register(system);
+}

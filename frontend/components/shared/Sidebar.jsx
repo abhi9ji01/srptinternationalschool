@@ -1,0 +1,61 @@
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import * as Icons from "lucide-react";
+import { navForRole } from "@/lib/navigation";
+import { ROLE_LABELS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+
+export default function Sidebar({ role, schoolName = "School MS" }) {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const items = navForRole(role);
+
+  return (
+    <aside
+      className={cn(
+        "hidden md:flex flex-col border-r bg-card h-screen sticky top-0 transition-all",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      <div className="flex items-center gap-2 h-16 px-4 border-b shrink-0">
+        <Icons.GraduationCap className="h-7 w-7 text-primary shrink-0" />
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{schoolName}</p>
+            <p className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</p>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+        {items.map((item) => {
+          const Icon = Icons[item.icon] || Icons.Circle;
+          const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={item.label}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                active ? "bg-primary text-primary-foreground" : "hover:bg-accent text-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="h-10 border-t flex items-center justify-center text-muted-foreground hover:bg-accent"
+      >
+        {collapsed ? <Icons.ChevronRight className="h-4 w-4" /> : <Icons.ChevronLeft className="h-4 w-4" />}
+      </button>
+    </aside>
+  );
+}

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d/projects/school-management)",
+      "Bash(npm --version)",
+      "Bash(mkdir -p uploads)",
+      "Bash(touch uploads/.gitkeep)"
+    ]
+  }
+}

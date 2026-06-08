@@ -1,0 +1,38 @@
+{
+  "name": "school-management-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fastify REST API backend for the School Management System",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:setup": "node scripts/migrate.js && node scripts/seed.js"
+  },
+  "dependencies": {
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^4.5.1",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/jwt": "^8.0.1",
+    "@fastify/multipart": "^8.3.0",
+    "@fastify/static": "^7.0.4",
+    "@fastify/rate-limit": "^9.1.0",
+    "mysql2": "^3.11.3",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "razorpay": "^2.9.4",
+    "nodemailer": "^6.9.15",
+    "twilio": "^5.3.3",
+    "xlsx": "^0.18.5",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0",
+    "jszip": "^3.10.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "pino-pretty": "^11.2.2"
+  }
+}
