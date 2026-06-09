@@ -2,7 +2,6 @@ import mysql from "mysql2/promise";
 
 // Single shared connection pool (mysql2, raw queries — no ORM)
 let pool;
-
 export function getPool() {
   if (!pool) {
     pool = mysql.createPool({
