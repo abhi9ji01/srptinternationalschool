@@ -1,11 +1,21 @@
 import { Server } from "socket.io";
 import { query, queryOne } from "../db.js";
 
-/** roleA/roleB chat permission (mirrors the REST guard). */
+// Leadership can reach every staff member (and be reached by them).
+export const CHAT_LEADERSHIP = ["super_admin", "admin", "hr_manager"];
+
+/**
+ * Chat hierarchy (staff-only; students/parents use Messages/announcements):
+ *   • Leadership (super_admin, admin, hr_manager) ↔ ANY staff member.
+ *   • Any staff member ↔ leadership (everyone can reach Admin & HR).
+ *   • Same-role peers ↔ each other (e.g. teacher↔teacher).
+ * Single source of truth for both the socket gate and the REST contact list.
+ */
 export function canChat(a, b) {
-  if (["student", "parent"].includes(a) || ["student", "parent"].includes(b)) return false;
-  const priv = (r) => r === "admin" || r === "super_admin";
-  return priv(a) || priv(b); // at least one side must be admin/super_admin
+  const isStaff = (r) => !["student", "parent"].includes(r);
+  if (!isStaff(a) || !isStaff(b)) return false;
+  if (CHAT_LEADERSHIP.includes(a) || CHAT_LEADERSHIP.includes(b)) return true;
+  return a === b; // same-role peers
 }
 
 /**

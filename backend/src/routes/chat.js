@@ -10,11 +10,14 @@ export default async function chatRoutes(app) {
   // Contacts: who the current user is allowed to chat with, with presence + unread.
   app.get("/chat/contacts", { preHandler: app.authorize(CHAT_ROLES) }, async (req) => {
     const sid = req.user.schoolId;
-    const priv = req.user.role === "admin" || req.user.role === "super_admin";
-    // Privileged users see all staff; everyone else sees only admins/super_admins.
-    const roleClause = priv
-      ? `u.role NOT IN ('student','parent')`
-      : `u.role IN ('admin','super_admin')`;
+    // Roles this user may message — derived from canChat() so the list and the
+    // send-gate can never disagree.
+    const targetRoles = CHAT_ROLES.filter((r) => canChat(req.user.role, r));
+    const roleParams = {};
+    targetRoles.forEach((r, i) => { roleParams[`cr${i}`] = r; });
+    const roleClause = targetRoles.length
+      ? `u.role IN (${targetRoles.map((_, i) => `:cr${i}`).join(",")})`
+      : `1=0`;
     const rows = await query(
       `SELECT u.id, u.name, u.role, u.profile_photo,
               cc.last_message_at, COALESCE(cc.unread_count,0) AS unread_count,
@@ -25,7 +28,7 @@ export default async function chatRoutes(app) {
        LEFT JOIN chat_contacts cc ON cc.user_id=:me AND cc.contact_id=u.id
        WHERE u.school_id=:sid AND u.id<>:me AND u.is_active=1 AND ${roleClause}
        ORDER BY cc.last_message_at IS NULL, cc.last_message_at DESC, u.name`,
-      { me: req.user.id, sid });
+      { me: req.user.id, sid, ...roleParams });
     const contacts = rows
       .filter((r) => canChat(req.user.role, r.role))
       .map((r) => ({ ...r, is_online: isOnline(r.id) }));
