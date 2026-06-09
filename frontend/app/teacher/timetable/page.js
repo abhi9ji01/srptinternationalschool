@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/shared/EmptyState";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -12,6 +13,7 @@ const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 export default function TeacherTimetablePage() {
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   useEffect(() => {
     (async () => {
@@ -50,7 +52,11 @@ export default function TeacherTimetablePage() {
                 <thead>
                   <tr>
                     <th className="border bg-muted p-2 text-left font-medium">Period</th>
-                    {DAYS.map((d) => <th key={d} className="border bg-muted p-2 text-left font-medium">{d}</th>)}
+                    {DAYS.map((d) => (
+                      <th key={d} className={cn("border p-2 text-left font-medium", d === today ? "bg-green-100 text-green-700" : "bg-muted")}>
+                        {d}{d === today && <span className="ml-1 text-[10px] font-normal">(Today)</span>}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -60,7 +66,7 @@ export default function TeacherTimetablePage() {
                       {DAYS.map((d) => {
                         const c = cellFor(p, d);
                         return (
-                          <td key={d} className="border p-2 align-top">
+                          <td key={d} className={cn("border p-2 align-top", d === today && "bg-green-50")}>
                             {c ? (
                               <div>
                                 <p className="font-medium">{c.subject_name || "—"}</p>

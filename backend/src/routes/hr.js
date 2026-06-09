@@ -2,7 +2,7 @@ import { query, queryOne, transaction } from "../db.js";
 import { hashPassword } from "../utils/password.js";
 import { registerCrud } from "../utils/crud.js";
 import { notify } from "../utils/notify.js";
-import { ADMINS } from "../config.js";
+import { ADMINS, STAFF_ROLES } from "../config.js";
 
 const HR = [...ADMINS, "hr_manager"];
 
@@ -57,8 +57,9 @@ export default async function hrRoutes(app) {
   });
 
   // ---- LEAVE TYPES ----
+  // HR/admin write; any staff role may READ them (needed to populate the apply-leave dropdown).
   registerCrud(app, {
-    table: "leave_types", prefix: "/hr/leave-types", roles: HR, readRoles: HR,
+    table: "leave_types", prefix: "/hr/leave-types", roles: HR, readRoles: STAFF_ROLES,
     columns: ["name", "days_allowed", "is_paid", "school_id"], schoolScoped: true,
     defaults: (req) => ({ school_id: req.user.schoolId }),
   });
@@ -179,5 +180,30 @@ export default async function hrRoutes(app) {
       `SELECT pr.*, u.name AS staff_name, s.employee_id, s.designation, s.department, s.bank_account, s.pan_number, sch.name AS school_name
        FROM payroll pr JOIN staff s ON s.id=pr.staff_id JOIN users u ON u.id=s.user_id
        LEFT JOIN schools sch ON sch.id=s.school_id WHERE pr.id=:id`, { id: req.params.id });
+  });
+
+  // ---- SELF-SERVICE SALARY (any authenticated employee sees only their own) ----
+  app.get("/hr/my-salary", { preHandler: app.authenticate }, async (req) => {
+    // Resolve the caller's staff record (covers all non-teaching staff roles).
+    let staff = await queryOne(
+      `SELECT s.id, s.employee_id, s.department, s.designation, s.employment_type, s.joining_date,
+              s.basic_salary, s.bank_account, s.ifsc_code, s.pan_number, u.name, u.email, sch.name AS school_name
+       FROM staff s JOIN users u ON u.id=s.user_id LEFT JOIN schools sch ON sch.id=s.school_id
+       WHERE s.user_id=:uid`, { uid: req.user.id });
+
+    let payroll = [];
+    if (staff) {
+      payroll = await query(`SELECT * FROM payroll WHERE staff_id=:s ORDER BY year DESC, month DESC LIMIT 24`, { s: staff.id });
+    } else {
+      // Teachers live in the `teachers` table (no staff row) — surface their base salary.
+      const t = await queryOne(
+        `SELECT t.employee_id, t.department, t.designation, t.joining_date, t.salary AS basic_salary,
+                u.name, u.email, sch.name AS school_name
+         FROM teachers t JOIN users u ON u.id=t.user_id LEFT JOIN schools sch ON sch.id=t.school_id
+         WHERE t.user_id=:uid`, { uid: req.user.id });
+      if (t) staff = { id: null, employment_type: "full_time", bank_account: null, ifsc_code: null, pan_number: null, ...t };
+    }
+
+    return { staff: staff || null, payroll };
   });
 }

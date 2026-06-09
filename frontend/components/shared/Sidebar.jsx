@@ -16,6 +16,7 @@ export default function Sidebar({ role, schoolName }) {
   const { school } = useSchool();
   const { unreadCount, announcementCount } = useSocket();
   const name = schoolName || school?.name || "School MS";
+  const homeHref = items[0]?.href || "/"; // first nav item is always the role Dashboard
 
   // Live count badge per nav item.
   const countFor = (href) => {
@@ -31,7 +32,7 @@ export default function Sidebar({ role, schoolName }) {
         collapsed ? "w-16" : "w-64"
       )}
     >
-      <div className="flex items-center gap-2 h-16 px-4 border-b shrink-0">
+      <Link href={homeHref} title="Go to home" className="flex items-center gap-2 h-16 px-4 border-b shrink-0 hover:bg-accent transition-colors">
         {school?.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={school.logo_url} alt="logo" className="h-8 w-8 rounded object-contain shrink-0" />
@@ -44,7 +45,7 @@ export default function Sidebar({ role, schoolName }) {
             <p className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</p>
           </div>
         )}
-      </div>
+      </Link>
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
         {items.map((item) => {

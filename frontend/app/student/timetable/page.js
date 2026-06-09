@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import EmptyState from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -15,6 +16,7 @@ export default function StudentTimetablePage() {
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasSection, setHasSection] = useState(true);
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   useEffect(() => {
     api.get("/reports/dashboard/student")
@@ -52,7 +54,11 @@ export default function StudentTimetablePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">Period</TableHead>
-                    {DAYS.map((d) => <TableHead key={d}>{d}</TableHead>)}
+                    {DAYS.map((d) => (
+                      <TableHead key={d} className={cn(d === today && "bg-green-100 text-green-700")}>
+                        {d}{d === today && <span className="ml-1 text-[10px] font-normal">(Today)</span>}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -62,7 +68,7 @@ export default function StudentTimetablePage() {
                       {DAYS.map((day) => {
                         const c = cellFor(period, day);
                         return (
-                          <TableCell key={day}>
+                          <TableCell key={day} className={cn(day === today && "bg-green-50")}>
                             {c ? (
                               <div>
                                 <p className="font-medium">{c.subject_name || "—"}</p>

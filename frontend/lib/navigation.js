@@ -47,6 +47,7 @@ export const NAV = {
     { label: "My Students", href: "/teacher/students", icon: "GraduationCap" },
     { label: "Discipline", href: "/teacher/discipline", icon: "ShieldAlert" },
     { label: "Leave", href: "/teacher/leave", icon: "CalendarOff" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
     { label: "PTM", href: "/teacher/ptm", icon: "CalendarClock" },
     { label: "Chat", href: "/teacher/chat", icon: "MessagesSquare" },
     { label: "Messages", href: "/messages", icon: "Mail" },
@@ -101,6 +102,7 @@ export const NAV = {
     { label: "Expenses", href: "/accountant/expenses", icon: "Wallet" },
     { label: "Gateway Logs", href: "/accountant/gateway-logs", icon: "Network" },
     { label: "Reports", href: "/accountant/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   librarian: [
     { label: "Dashboard", href: "/library/dashboard", icon: "LayoutDashboard" },
@@ -109,6 +111,7 @@ export const NAV = {
     { label: "Return Book", href: "/library/return", icon: "BookDown" },
     { label: "Members", href: "/library/members", icon: "Users" },
     { label: "Reports", href: "/library/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   transport_manager: [
     { label: "Dashboard", href: "/transport/dashboard", icon: "LayoutDashboard" },
@@ -116,6 +119,7 @@ export const NAV = {
     { label: "Routes", href: "/transport/routes", icon: "Map" },
     { label: "Students", href: "/transport/students", icon: "GraduationCap" },
     { label: "Assign", href: "/transport/assign", icon: "UserPlus" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   hostel_warden: [
     { label: "Dashboard", href: "/hostel/dashboard", icon: "LayoutDashboard" },
@@ -124,6 +128,7 @@ export const NAV = {
     { label: "Students", href: "/hostel/students", icon: "GraduationCap" },
     { label: "Fees", href: "/hostel/fees", icon: "CreditCard" },
     { label: "Reports", href: "/hostel/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   hr_manager: [
     { label: "Dashboard", href: "/hr/dashboard", icon: "LayoutDashboard" },
@@ -134,24 +139,28 @@ export const NAV = {
     { label: "Leave Balances", href: "/hr/leave-balances", icon: "Scale" },
     { label: "Payroll", href: "/hr/payroll", icon: "Banknote" },
     { label: "Reports", href: "/hr/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   health_officer: [
     { label: "Dashboard", href: "/health/dashboard", icon: "LayoutDashboard" },
     { label: "Health Records", href: "/health/records", icon: "HeartPulse" },
     { label: "Medical Visits", href: "/health/visits", icon: "Stethoscope" },
     { label: "Reports", href: "/health/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   security_guard: [
     { label: "Dashboard", href: "/visitor/dashboard", icon: "LayoutDashboard" },
     { label: "Check In", href: "/visitor/checkin", icon: "LogIn" },
     { label: "Check Out", href: "/visitor/checkout", icon: "LogOut" },
     { label: "Visitor Log", href: "/visitor/log", icon: "ScrollText" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
   canteen_manager: [
     { label: "Dashboard", href: "/canteen/dashboard", icon: "LayoutDashboard" },
     { label: "Menu", href: "/canteen/menu", icon: "UtensilsCrossed" },
     { label: "Orders", href: "/canteen/orders", icon: "ShoppingCart" },
     { label: "Reports", href: "/canteen/reports", icon: "BarChart3" },
+    { label: "My Salary", href: "/salary", icon: "Wallet" },
   ],
 };
 
