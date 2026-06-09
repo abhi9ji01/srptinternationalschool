@@ -24,6 +24,9 @@ import reportCards from "./report-cards.js";
 import emailTemplates from "./email-templates.js";
 import idCards from "./id-cards.js";
 import chat from "./chat.js";
+import reviews from "./reviews.js";
+import complaints from "./complaints.js";
+import employeeAttendance from "./employee-attendance.js";
 
 /** Registers every API module under the parent prefix (/api). */
 export default async function registerRoutes(app) {
@@ -53,4 +56,7 @@ export default async function registerRoutes(app) {
   await app.register(emailTemplates);
   await app.register(idCards);
   await app.register(chat);
+  await app.register(reviews);
+  await app.register(complaints);
+  await app.register(employeeAttendance);
 }

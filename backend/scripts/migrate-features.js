@@ -132,6 +132,74 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
   console.log("  ✓ chat_messages + chat_contacts ready");
 
+  console.log("Feature 9 — employee reviews / ratings");
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT,
+      reviewer_id INT NOT NULL,
+      target_user_id INT NOT NULL,
+      rating TINYINT NOT NULL,
+      comment TEXT,
+      category VARCHAR(50),
+      is_anonymous BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_review (reviewer_id, target_user_id),
+      INDEX idx_rev_target (target_user_id),
+      INDEX idx_rev_school (school_id),
+      FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  console.log("  ✓ reviews ready");
+
+  console.log("Feature 10 — complaint management");
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS complaints (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT,
+      raised_by INT NOT NULL,
+      against_user_id INT,
+      category VARCHAR(60),
+      subject VARCHAR(200) NOT NULL,
+      description TEXT,
+      priority ENUM('low','medium','high') DEFAULT 'medium',
+      status ENUM('open','in_progress','resolved','closed') DEFAULT 'open',
+      assigned_to INT,
+      resolution TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      resolved_at DATETIME,
+      INDEX idx_comp_raised (raised_by),
+      INDEX idx_comp_status (status),
+      INDEX idx_comp_school (school_id),
+      FOREIGN KEY (raised_by) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (against_user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  console.log("  ✓ complaints ready");
+
+  console.log("Feature 11 — employee attendance");
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS employee_attendance (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT,
+      user_id INT NOT NULL,
+      date DATE NOT NULL,
+      status ENUM('present','absent','late','half_day','leave') NOT NULL DEFAULT 'present',
+      check_in TIME,
+      check_out TIME,
+      marked_by INT,
+      remarks VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_emp_att (user_id, date),
+      INDEX idx_emp_att_date (date),
+      INDEX idx_emp_att_school (school_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  console.log("  ✓ employee_attendance ready");
+
   await conn.end();
   console.log("\n✓ Feature migration complete.");
   process.exit(0);
