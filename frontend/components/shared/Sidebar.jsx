@@ -6,6 +6,7 @@ import * as Icons from "lucide-react";
 import { navForRole } from "@/lib/navigation";
 import { ROLE_LABELS } from "@/lib/constants";
 import { useSchool } from "@/contexts/SchoolContext";
+import { useSocket } from "@/contexts/SocketContext";
 import { cn } from "@/lib/utils";
 
 export default function Sidebar({ role, schoolName }) {
@@ -13,7 +14,15 @@ export default function Sidebar({ role, schoolName }) {
   const [collapsed, setCollapsed] = useState(false);
   const items = navForRole(role);
   const { school } = useSchool();
+  const { unreadCount, announcementCount } = useSocket();
   const name = schoolName || school?.name || "School MS";
+
+  // Live count badge per nav item.
+  const countFor = (href) => {
+    if (href.includes("announcements")) return announcementCount;
+    if (href.includes("/chat")) return unreadCount;
+    return 0;
+  };
 
   return (
     <aside
@@ -41,18 +50,26 @@ export default function Sidebar({ role, schoolName }) {
         {items.map((item) => {
           const Icon = Icons[item.icon] || Icons.Circle;
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+          const count = countFor(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
               title={item.label}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 active ? "bg-primary text-primary-foreground" : "hover:bg-accent text-foreground"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+              {count > 0 && (collapsed ? (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              ) : (
+                <span className="ml-auto shrink-0 h-5 min-w-5 px-1 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              ))}
             </Link>
           );
         })}

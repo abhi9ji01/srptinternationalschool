@@ -19,7 +19,7 @@ const timeStr = (d) => new Date(d).toLocaleTimeString([], { hour: "2-digit", min
 
 export default function ChatPage({ title = "Messages", allow }) {
   const { user } = useAuth();
-  const { onlineUsers, sendMessage, setUnreadCount, refreshUnread } = useSocket();
+  const { onlineUsers, setOnlineUsers, sendMessage, setUnreadCount, refreshUnread } = useSocket();
   const [contacts, setContacts] = useState([]);
   const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -34,9 +34,16 @@ export default function ChatPage({ title = "Messages", allow }) {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
   const loadContacts = useCallback(async () => {
-    try { const d = await api.get("/chat/contacts"); setContacts(d.data || []); }
-    catch (e) { toast.error(e.message); }
-  }, []);
+    try {
+      const d = await api.get("/chat/contacts");
+      const data = d.data || [];
+      setContacts(data);
+      // Seed presence from REST (server computes is_online) so the dots are correct
+      // even if the one-time socket "online_users" event was missed (reconnect/timing).
+      const onlineIds = data.filter((c) => c.is_online).map((c) => c.id);
+      setOnlineUsers((prev) => new Set([...prev, ...onlineIds]));
+    } catch (e) { toast.error(e.message); }
+  }, [setOnlineUsers]);
   useEffect(() => { loadContacts(); }, [loadContacts]);
 
   const openConversation = useCallback(async (contact) => {
@@ -78,11 +85,14 @@ export default function ChatPage({ title = "Messages", allow }) {
     const onRead = ({ message_ids }) => {
       setMessages((prev) => prev.map((m) => (message_ids.includes(m.id) ? { ...m, is_read: true } : m)));
     };
+    // On (re)connect, the server re-emits presence; refresh contacts so is_online re-seeds.
+    const onConnect = () => loadContacts();
     s.on("receive_message", onReceive);
     s.on("typing_indicator", onTyping);
     s.on("read_receipt", onRead);
-    return () => { s.off("receive_message", onReceive); s.off("typing_indicator", onTyping); s.off("read_receipt", onRead); };
-  }, [user?.id, refreshUnread]);
+    s.on("connect", onConnect);
+    return () => { s.off("receive_message", onReceive); s.off("typing_indicator", onTyping); s.off("read_receipt", onRead); s.off("connect", onConnect); };
+  }, [user?.id, refreshUnread, loadContacts]);
 
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages, typingFrom]);
 

@@ -14,11 +14,28 @@ export default async function communicationRoutes(app) {
 
   app.post("/announcements", { preHandler: app.authorize([...ADMINS, "teacher"]) }, async (req, reply) => {
     const b = req.body || {};
+    const targetRole = b.target_role || "all";
     const r = await query(
       `INSERT INTO announcements (school_id, title, content, target_role, posted_by, is_published, publish_date, expiry_date, attachment)
        VALUES (:sid,:title,:content,:role,:by,:pub,:pdate,:exp,:att)`,
-      { sid: req.user.schoolId, title: b.title, content: b.content, role: b.target_role || "all", by: req.user.id,
+      { sid: req.user.schoolId, title: b.title, content: b.content, role: targetRole, by: req.user.id,
         pub: b.is_published === false ? 0 : 1, pdate: b.publish_date || new Date().toISOString().slice(0, 10), exp: b.expiry_date || null, att: b.attachment || null });
+
+    // Real-time "new announcement" badge — only for admin/super_admin posts, and only
+    // to online, same-school users that the announcement actually targets.
+    if (app.io && ADMINS.includes(req.user.role) && (b.is_published !== false)) {
+      const onlineIds = [...(app.onlineUsers?.keys() || [])].filter((id) => id !== req.user.id);
+      if (onlineIds.length) {
+        const ph = onlineIds.map((_, i) => `:u${i}`).join(",");
+        const p = { sid: req.user.schoolId, trole: targetRole };
+        onlineIds.forEach((id, i) => { p[`u${i}`] = id; });
+        const targets = await query(
+          `SELECT id FROM users WHERE school_id=:sid AND is_active=1
+             AND (:trole='all' OR role=:trole) AND id IN (${ph})`, p);
+        const payload = { id: r.insertId, title: b.title, target_role: targetRole, school_id: req.user.schoolId };
+        for (const t of targets) app.io.to(`user:${t.id}`).emit("new_announcement", payload);
+      }
+    }
     return reply.code(201).send({ id: r.insertId });
   });
 
