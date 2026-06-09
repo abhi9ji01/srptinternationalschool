@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const PAY_LABEL = { cash: "Cash", bank_transfer: "Bank Transfer", upi: "UPI", cheque: "Cheque", bank: "Bank Transfer" };
 
 export default function PayrollSlipPage() {
   const { id } = useParams();
@@ -94,6 +95,18 @@ export default function PayrollSlipPage() {
 
               <div className="flex justify-between items-center border-t pt-4 text-lg font-bold">
                 <span>Net Salary</span><span>{formatCurrency(d.net_salary)}</span>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
+                <span>
+                  Status:{" "}
+                  <span className={d.status === "paid" ? "font-semibold text-green-600" : "font-semibold text-amber-600"}>
+                    {d.status || "pending"}
+                  </span>
+                </span>
+                {d.status === "paid" && (
+                  <span>Paid via {PAY_LABEL[d.payment_mode] || d.payment_mode || "—"}{d.payment_date ? ` on ${d.payment_date}` : ""}</span>
+                )}
               </div>
             </>
           )}

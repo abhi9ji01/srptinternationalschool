@@ -140,6 +140,31 @@ export default async function hrRoutes(app) {
   // Generate payroll for a month with deductions
   app.post("/hr/payroll/generate", { preHandler: app.authorize(HR) }, async (req) => {
     const { month, year } = req.body || {};
+
+    // Teachers live in `teachers` (not `staff`), but payroll FK references staff.
+    // Lazily create a staff row for any teacher missing one so payroll covers them too.
+    const teachersNoStaff = await query(
+      `SELECT t.user_id, t.employee_id, t.department, t.designation, t.joining_date, t.salary
+       FROM teachers t
+       WHERE t.school_id=:sid AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id=t.user_id)`,
+      { sid: req.user.schoolId });
+    for (const t of teachersNoStaff) {
+      const base = { uid: t.user_id, sid: req.user.schoolId, dept: t.department || null, desig: t.designation || null, jd: t.joining_date || null, sal: t.salary || 0 };
+      try {
+        await query(
+          `INSERT INTO staff (user_id, school_id, employee_id, department, designation, employment_type, joining_date, basic_salary)
+           VALUES (:uid,:sid,:emp,:dept,:desig,'full_time',:jd,:sal)`,
+          { ...base, emp: t.employee_id || null });
+      } catch (e) {
+        if (e.code === "ER_DUP_ENTRY") {
+          // employee_id already taken by another staff row — insert without it.
+          await query(
+            `INSERT INTO staff (user_id, school_id, department, designation, employment_type, joining_date, basic_salary)
+             VALUES (:uid,:sid,:dept,:desig,'full_time',:jd,:sal)`, base);
+        } else throw e;
+      }
+    }
+
     const staff = await query(`SELECT * FROM staff WHERE school_id=:sid`, { sid: req.user.schoolId });
     let generated = 0;
     for (const s of staff) {
@@ -170,8 +195,34 @@ export default async function hrRoutes(app) {
   });
 
   app.post("/hr/payroll/:id/pay", { preHandler: app.authorize(HR) }, async (req) => {
-    await query(`UPDATE payroll SET status='paid', payment_date=CURDATE(), payment_mode=:m WHERE id=:id`, { m: req.body?.payment_mode || "bank", id: req.params.id });
+    const b = req.body || {};
+    const pd = b.payment_date || new Date().toISOString().slice(0, 10);
+    await query(`UPDATE payroll SET status='paid', payment_date=:pd, payment_mode=:m WHERE id=:id`,
+      { pd, m: b.payment_mode || "cash", id: req.params.id });
+    // Notify the employee their salary was paid.
+    const row = await queryOne(`SELECT s.user_id, pr.net_salary, pr.month, pr.year FROM payroll pr JOIN staff s ON s.id=pr.staff_id WHERE pr.id=:id`, { id: req.params.id });
+    if (row?.user_id) await notify({ userId: row.user_id, title: "Salary paid", message: `Your salary for ${row.month}/${row.year} has been paid.`, type: "payroll", link: "/salary" });
     return { success: true };
+  });
+
+  // Bulk-pay every pending payslip for a month (one click for the whole school).
+  app.post("/hr/payroll/pay-all", { preHandler: app.authorize(HR) }, async (req) => {
+    const b = req.body || {};
+    const pd = b.payment_date || new Date().toISOString().slice(0, 10);
+    const pending = await query(
+      `SELECT pr.id, s.user_id, pr.month, pr.year FROM payroll pr JOIN staff s ON s.id=pr.staff_id
+       WHERE s.school_id=:sid AND pr.month=:m AND pr.year=:y AND pr.status<>'paid'`,
+      { sid: req.user.schoolId, m: b.month, y: b.year });
+    if (!pending.length) return { success: true, paid: 0 };
+    const ids = pending.map((p) => p.id);
+    const ph = ids.map((_, i) => `:i${i}`).join(",");
+    const p = { pd, m: b.payment_mode || "cash" };
+    ids.forEach((id, i) => { p[`i${i}`] = id; });
+    await query(`UPDATE payroll SET status='paid', payment_date=:pd, payment_mode=:m WHERE id IN (${ph})`, p);
+    for (const row of pending) {
+      if (row.user_id) await notify({ userId: row.user_id, title: "Salary paid", message: `Your salary for ${row.month}/${row.year} has been paid.`, type: "payroll", link: "/salary" });
+    }
+    return { success: true, paid: ids.length };
   });
 
   // Salary slip data

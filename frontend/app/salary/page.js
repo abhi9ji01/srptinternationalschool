@@ -19,6 +19,7 @@ const ALLOW = [
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
+const PAY_LABEL = { cash: "Cash", bank_transfer: "Bank Transfer", upi: "UPI", cheque: "Cheque", bank: "Bank Transfer" };
 const monthLabel = (m, y) => `${MONTHS[Number(m)] || m} ${y}`;
 const maskAccount = (a) => (a ? `••••${String(a).slice(-4)}` : "—");
 
@@ -124,7 +125,7 @@ export default function SalaryPage() {
                   </div>
                   {slip?.status === "paid" && slip?.payment_date && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Paid on {slip.payment_date} {slip.payment_mode ? `via ${slip.payment_mode}` : ""}
+                      Paid on {slip.payment_date} {slip.payment_mode ? `via ${PAY_LABEL[slip.payment_mode] || slip.payment_mode}` : ""}
                     </p>
                   )}
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
