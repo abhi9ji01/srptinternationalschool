@@ -23,7 +23,7 @@ export default function Navbar({ title }) {
   const { unreadCount, canChat } = useSocket();
   const router = useRouter();
   const items = navForRole(user?.role);
-  const chatHref = user?.role === "teacher" ? "/teacher/chat" : "/admin/chat";
+  const chatHref = "/chat";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
