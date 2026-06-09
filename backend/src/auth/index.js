@@ -11,7 +11,6 @@ async function authPlugin(app) {
     secret: process.env.JWT_SECRET || "dev-secret-change-me",
     sign: { expiresIn: process.env.JWT_EXPIRES_IN || "8h" },
   });
-
   app.decorate("authenticate", async (request, reply) => {
     try {
       await request.jwtVerify();
