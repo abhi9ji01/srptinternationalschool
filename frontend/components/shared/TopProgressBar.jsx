@@ -1,41 +1,55 @@
 "use client";
-import { useEffect, useRef, useState, Suspense } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 /**
- * Lightweight NProgress-style top loading bar shown on every route change.
- * Self-contained (no dependency): it starts when an internal link is clicked
- * or history is pushed, and completes once the pathname/query actually changes.
+ * NProgress-style top bar that shows ONLY on real route (pathname) changes.
+ *
+ * It starts on an internal link click or a history.pushState whose pathname
+ * actually differs, and completes when usePathname() changes. It deliberately
+ * does NOT patch replaceState (Next.js calls it on initial load / shallow
+ * updates, which would otherwise make the bar stick) and never reacts to tab
+ * switches or same-page interactions. A watchdog guarantees it always finishes.
  */
-function Bar() {
+export default function TopProgressBar() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
   const trickle = useRef(null);
-  const hideTimer = useRef(null);
+  const hideT = useRef(null);
+  const watchdog = useRef(null);
+  const started = useRef(false);
 
   function start() {
-    clearInterval(trickle.current);
-    clearTimeout(hideTimer.current);
+    if (started.current) return;        // already running for this navigation
+    started.current = true;
+    clearTimeout(hideT.current);
     setVisible(true);
     setProgress(8);
     trickle.current = setInterval(() => {
       setProgress((p) => (p >= 90 ? p : p + Math.max(0.5, (90 - p) * 0.12)));
     }, 200);
+    watchdog.current = setTimeout(finish, 6000); // safety: never stay stuck
   }
 
-  function done() {
+  function finish() {
+    if (!started.current) return;
+    started.current = false;
     clearInterval(trickle.current);
+    clearTimeout(watchdog.current);
     setProgress(100);
-    hideTimer.current = setTimeout(() => { setVisible(false); setProgress(0); }, 250);
+    hideT.current = setTimeout(() => { setVisible(false); setProgress(0); }, 250);
   }
 
-  // Complete whenever the route (path or query) changes.
-  useEffect(() => { done(); /* eslint-disable-next-line */ }, [pathname, searchParams]);
+  // Complete whenever the route actually changes (no-op on first mount).
+  useEffect(() => { finish(); /* eslint-disable-next-line */ }, [pathname]);
 
-  // Start on internal link clicks and history navigation.
   useEffect(() => {
+    const samePath = (href) => {
+      try { return new URL(href, window.location.href).pathname === window.location.pathname; }
+      catch { return true; }
+    };
+
     const onClick = (e) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = e.target.closest?.("a");
@@ -43,35 +57,25 @@ function Bar() {
       const href = a.getAttribute("href");
       if (!href || a.target === "_blank" || a.hasAttribute("download")) return;
       if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-      try {
-        const url = new URL(href, window.location.href);
-        if (url.origin !== window.location.origin) return;
-        if (url.pathname === window.location.pathname && url.search === window.location.search) return;
-      } catch { return; }
+      try { if (new URL(href, window.location.href).origin !== window.location.origin) return; } catch { return; }
+      if (samePath(href)) return;       // same page → not a navigation
       start();
     };
 
-    const patch = (type) => {
-      const orig = history[type];
-      return function (...args) {
-        start();
-        return orig.apply(this, args);
-      };
+    // Patch pushState only (router.push / Link). NOT replaceState.
+    const origPush = window.history.pushState;
+    window.history.pushState = function (state, title, url) {
+      if (url != null && !samePath(String(url))) start();
+      return origPush.apply(this, arguments);
     };
-    const origPush = history.pushState;
-    const origReplace = history.replaceState;
-    history.pushState = patch("pushState");
-    history.replaceState = patch("replaceState");
-    document.addEventListener("click", onClick, true);
-    window.addEventListener("popstate", start);
 
+    document.addEventListener("click", onClick, true);
     return () => {
-      history.pushState = origPush;
-      history.replaceState = origReplace;
+      window.history.pushState = origPush;
       document.removeEventListener("click", onClick, true);
-      window.removeEventListener("popstate", start);
       clearInterval(trickle.current);
-      clearTimeout(hideTimer.current);
+      clearTimeout(watchdog.current);
+      clearTimeout(hideT.current);
     };
   }, []);
 
@@ -83,14 +87,5 @@ function Bar() {
         style={{ width: `${progress}%`, boxShadow: "0 0 8px hsl(var(--primary)), 0 0 4px hsl(var(--primary))" }}
       />
     </div>
-  );
-}
-
-export default function TopProgressBar() {
-  // useSearchParams must live under a Suspense boundary.
-  return (
-    <Suspense fallback={null}>
-      <Bar />
-    </Suspense>
   );
 }
