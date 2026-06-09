@@ -2,6 +2,10 @@ import { query, queryOne } from "../db.js";
 import { buildExcel } from "../utils/excel.js";
 import JSZip from "jszip";
 import { ADMINS } from "../config.js";
+import { uploadBuffer, deleteFromCloudinary } from "../lib/upload.js";
+import { cloudinaryEnabled } from "../lib/cloudinary.js";
+import { sendEmail } from "../utils/mailer.js";
+import { sendSMS } from "../utils/sms.js";
 
 export default async function systemRoutes(app) {
   // ---- AUDIT LOGS (super admin) ----
@@ -34,11 +38,75 @@ export default async function systemRoutes(app) {
 
   app.put("/settings", { preHandler: app.authorize(ADMINS) }, async (req) => {
     const b = req.body || {};
-    const f = ["name", "address", "phone", "email", "logo_url", "website", "principal_name", "affiliation_board", "established_year"];
+    const f = ["name", "address", "phone", "email", "logo_url", "website", "principal_name",
+      "affiliation_board", "established_year", "primary_color", "secondary_color"];
     const set = [], p = { id: req.user.schoolId };
     f.forEach((k) => { if (b[k] !== undefined) { set.push(`${k}=:${k}`); p[k] = b[k]; } });
     if (set.length) await query(`UPDATE schools SET ${set.join(", ")} WHERE id=:id`, p);
     return { success: true };
+  });
+
+  // ---- SCHOOL LOGO (Cloudinary) ----
+  app.post("/settings/logo", { preHandler: app.authorize(ADMINS) }, async (req, reply) => {
+    if (!cloudinaryEnabled()) return reply.code(503).send({ error: "File storage is not configured. Set CLOUDINARY_* env variables." });
+    const part = await req.file({ limits: { fileSize: 1 * 1024 * 1024 } });
+    if (!part) return reply.code(400).send({ error: "No file provided" });
+    if (!part.mimetype.startsWith("image/")) return reply.code(415).send({ error: "Logo must be an image" });
+    let buffer;
+    try { buffer = await part.toBuffer(); }
+    catch { return reply.code(413).send({ error: "Logo exceeds the 1MB limit" }); }
+    if (part.file.truncated) return reply.code(413).send({ error: "Logo exceeds the 1MB limit" });
+
+    const school = await queryOne(`SELECT logo_public_id FROM schools WHERE id=:id`, { id: req.user.schoolId });
+    const result = await uploadBuffer(buffer, "school-logo", { filename: part.filename });
+    await query(`UPDATE schools SET logo_url=:url, logo_public_id=:pid WHERE id=:id`,
+      { url: result.url, pid: result.public_id, id: req.user.schoolId });
+    // Best-effort cleanup of the previous logo.
+    if (school?.logo_public_id) await deleteFromCloudinary(school.logo_public_id, "image");
+    return { logo_url: result.url, logo_public_id: result.public_id };
+  });
+
+  // ---- PUBLIC SCHOOL INFO (no auth) — used by the landing page ----
+  app.get("/public/school-info", async () => {
+    const s = await queryOne(
+      `SELECT name, address, phone, email, website, logo_url, principal_name,
+              affiliation_board, established_year, primary_color, secondary_color
+       FROM schools ORDER BY id ASC LIMIT 1`);
+    return s || {};
+  });
+
+  // ---- PUBLIC SCHOOL BRANDING (any authenticated user) ----
+  // Used by SchoolContext for the navbar, report cards, ID cards, print headers.
+  app.get("/school-info", { preHandler: app.authenticate }, async (req) => {
+    const s = await queryOne(
+      `SELECT id, name, address, phone, email, website, logo_url, principal_name,
+              affiliation_board, established_year, primary_color, secondary_color
+       FROM schools WHERE id=:id`, { id: req.user.schoolId });
+    return s || {};
+  });
+
+  // ---- TEST EMAIL / SMS (sends to the admin's own contact) ----
+  app.post("/settings/test-email", { preHandler: app.authorize(ADMINS) }, async (req, reply) => {
+    const me = await queryOne(`SELECT email, name FROM users WHERE id=:id`, { id: req.user.id });
+    if (!me?.email) return reply.code(400).send({ error: "Your account has no email address" });
+    const r = await sendEmail({
+      to: me.email, userId: req.user.id,
+      subject: "SMTP Test Email",
+      html: `<p>Hello ${me.name},</p><p>This is a test email confirming your SMTP settings are working.</p>`,
+      text: "This is a test email confirming your SMTP settings are working.",
+    });
+    if (r.status === "failed") return reply.code(502).send({ error: r.error || "Email failed" });
+    if (r.status === "pending") return reply.code(503).send({ error: "SMTP is not configured on the server" });
+    return { success: true, message: `Test email sent to ${me.email}` };
+  });
+
+  app.post("/settings/test-sms", { preHandler: app.authorize(ADMINS) }, async (req, reply) => {
+    const me = await queryOne(`SELECT phone, name FROM users WHERE id=:id`, { id: req.user.id });
+    if (!me?.phone) return reply.code(400).send({ error: "Your account has no phone number" });
+    const r = await sendSMS({ to: me.phone, userId: req.user.id, message: "Test SMS from your School MS — provider is working." });
+    if (r.status === "failed") return reply.code(502).send({ error: r.error || "SMS failed" });
+    if (r.status === "pending") return reply.code(503).send({ error: "No SMS provider is configured on the server" });
+    return { success: true, message: `Test SMS sent to ${me.phone}` };
   });
 
   // ---- BACKUP (export key tables as a ZIP of Excel files) ----
@@ -76,22 +144,8 @@ export default async function systemRoutes(app) {
     return { success: true };
   });
 
-  // ---- GENERIC FILE UPLOAD ----
-  app.post("/upload", { preHandler: app.authenticate }, async (req, reply) => {
-    const data = await req.file();
-    if (!data) return reply.code(400).send({ error: "No file" });
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const safe = Date.now() + "-" + data.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const dest = path.join(app.uploadDir, safe);
-    await new Promise((resolve, reject) => {
-      const ws = fs.createWriteStream(dest);
-      data.file.pipe(ws);
-      ws.on("finish", resolve);
-      ws.on("error", reject);
-    });
-    return { url: `/uploads/${safe}`, filename: data.filename };
-  });
+  // NOTE: the generic POST /upload now lives in routes/upload.js (Cloudinary).
+  // The old local-disk handler was removed as part of the Cloudinary migration.
 
   // ---- SMS / EMAIL manual send + logs ----
   app.get("/notification-logs", { preHandler: app.authorize(ADMINS) }, async () => {

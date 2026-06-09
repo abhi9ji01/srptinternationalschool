@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import EmptyState from "@/components/shared/EmptyState";
+import ChangePasswordCard from "@/components/shared/ChangePasswordCard";
+import IdCardButton from "@/components/idcards/IdCardButton";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
@@ -23,6 +25,7 @@ export default function TeacherDetail() {
     <AppShell title="Teacher Profile" allow={["super_admin", "admin"]}>
       <div className="flex gap-2 mb-4">
         <Button asChild variant="outline"><Link href="/admin/teachers">← Back</Link></Button>
+        {t && <IdCardButton type="teacher" id={t.id} name={t.name} />}
       </div>
       {!t ? <p className="text-muted-foreground">Loading…</p> : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -50,6 +53,9 @@ export default function TeacherDetail() {
                 ))}
             </CardContent>
           </Card>
+          <div className="lg:col-span-2">
+            <ChangePasswordCard userId={t.user_id} userName={t.name} />
+          </div>
         </div>
       )}
     </AppShell>

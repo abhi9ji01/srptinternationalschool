@@ -76,7 +76,7 @@ export default function ParentReportCardPage() {
               <CardContent className="pt-6">
                 <div className="print-area space-y-6">
                   <div className="text-center border-b pb-4">
-                    <h1 className="text-2xl font-bold">Delhi Public School</h1>
+                    <h1 className="text-2xl font-bold">SRPT International School</h1>
                     <p className="text-sm text-muted-foreground">Academic Report Card</p>
                   </div>
 

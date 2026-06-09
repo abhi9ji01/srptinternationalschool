@@ -14,6 +14,22 @@ import { api } from "@/lib/api";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 
+/** "09:00:00" -> "9:00 AM"; tolerates "09:00" and null. */
+function fmtTime(t) {
+  if (!t) return "";
+  const [h, m] = String(t).split(":");
+  const hour = Number(h);
+  if (Number.isNaN(hour)) return "";
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 || 12;
+  return `${h12}:${m ?? "00"} ${ampm}`;
+}
+function timeRange(p) {
+  const s = fmtTime(p?.start_time), e = fmtTime(p?.end_time);
+  if (s && e) return `${s} – ${e}`;
+  return s || e || "";
+}
+
 export default function TimetablePage() {
   const [sections, setSections] = useState([]);
   const [sectionId, setSectionId] = useState("");
@@ -162,9 +178,15 @@ export default function TimetablePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {PERIODS.map((pn) => (
+                  {PERIODS.map((pn) => {
+                    // A period number usually maps to a fixed time — show the first one found in the row.
+                    const rowTime = timeRange(periods.find((p) => Number(p.period_number) === pn && (p.start_time || p.end_time)));
+                    return (
                     <tr key={pn}>
-                      <td className="border p-2 font-medium">{pn}</td>
+                      <td className="border p-2 font-medium align-top">
+                        <div>{pn}</div>
+                        {rowTime && <div className="text-[11px] font-normal text-muted-foreground whitespace-nowrap">{rowTime}</div>}
+                      </td>
                       {DAYS.map((day) => {
                         const cell = cellFor(pn, day);
                         return (
@@ -174,6 +196,7 @@ export default function TimetablePage() {
                                 <div>
                                   <div className="font-medium">{cell.subject_name || "—"}</div>
                                   <div className="text-xs text-muted-foreground">{cell.teacher_name || ""}</div>
+                                  {timeRange(cell) && <div className="text-[11px] text-primary/80">{timeRange(cell)}</div>}
                                 </div>
                                 <Button
                                   size="icon"
@@ -191,7 +214,8 @@ export default function TimetablePage() {
                         );
                       })}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
               {loading && <p className="p-3 text-sm text-muted-foreground">Loading...</p>}

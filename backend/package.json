@@ -9,8 +9,10 @@
     "dev": "node --watch server.js",
     "start": "node server.js",
     "db:migrate": "node scripts/migrate.js",
+    "db:migrate:features": "node scripts/migrate-features.js",
     "db:seed": "node scripts/seed.js",
-    "db:setup": "node scripts/migrate.js && node scripts/seed.js"
+    "db:seed:email": "node scripts/seed-email-templates.js",
+    "db:setup": "node scripts/migrate.js && node scripts/migrate-features.js && node scripts/seed.js"
   },
   "dependencies": {
     "fastify": "^4.28.1",
@@ -22,6 +24,8 @@
     "@fastify/rate-limit": "^9.1.0",
     "mysql2": "^3.11.3",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.5.1",
+    "socket.io": "^4.8.0",
     "dotenv": "^16.4.5",
     "razorpay": "^2.9.4",
     "nodemailer": "^6.9.15",

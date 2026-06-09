@@ -50,7 +50,7 @@ export default function StudentFeesPage() {
         key: order.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
-        name: "Delhi Public School",
+        name: "SRPT International School",
         description: `Invoice #${inv.id}`,
         order_id: order.orderId,
         handler: async (resp) => {

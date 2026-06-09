@@ -17,6 +17,13 @@ import timetable from "./timetable.js";
 import misc from "./misc.js";
 import reports from "./reports.js";
 import system from "./system.js";
+import upload from "./upload.js";
+import users from "./users.js";
+import sections from "./sections.js";
+import reportCards from "./report-cards.js";
+import emailTemplates from "./email-templates.js";
+import idCards from "./id-cards.js";
+import chat from "./chat.js";
 
 /** Registers every API module under the parent prefix (/api). */
 export default async function registerRoutes(app) {
@@ -39,4 +46,11 @@ export default async function registerRoutes(app) {
   await app.register(misc);
   await app.register(reports);
   await app.register(system);
+  await app.register(upload);
+  await app.register(users);
+  await app.register(sections);
+  await app.register(reportCards);
+  await app.register(emailTemplates);
+  await app.register(idCards);
+  await app.register(chat);
 }

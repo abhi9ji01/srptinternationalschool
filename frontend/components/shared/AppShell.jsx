@@ -27,7 +27,7 @@ export default function AppShell({ children, title, allow }) {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar role={user.role} schoolName="Delhi Public School" />
+      <Sidebar role={user.role} />
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar title={title} />
         <main className="flex-1 p-4 md:p-6 bg-muted/30">{children}</main>

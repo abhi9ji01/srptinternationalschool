@@ -5,12 +5,15 @@ import { useState } from "react";
 import * as Icons from "lucide-react";
 import { navForRole } from "@/lib/navigation";
 import { ROLE_LABELS } from "@/lib/constants";
+import { useSchool } from "@/contexts/SchoolContext";
 import { cn } from "@/lib/utils";
 
-export default function Sidebar({ role, schoolName = "School MS" }) {
+export default function Sidebar({ role, schoolName }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const items = navForRole(role);
+  const { school } = useSchool();
+  const name = schoolName || school?.name || "School MS";
 
   return (
     <aside
@@ -20,10 +23,15 @@ export default function Sidebar({ role, schoolName = "School MS" }) {
       )}
     >
       <div className="flex items-center gap-2 h-16 px-4 border-b shrink-0">
-        <Icons.GraduationCap className="h-7 w-7 text-primary shrink-0" />
+        {school?.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={school.logo_url} alt="logo" className="h-8 w-8 rounded object-contain shrink-0" />
+        ) : (
+          <Icons.GraduationCap className="h-7 w-7 text-primary shrink-0" />
+        )}
         {!collapsed && (
           <div className="min-w-0">
-            <p className="font-semibold text-sm truncate">{schoolName}</p>
+            <p className="font-semibold text-sm truncate">{name}</p>
             <p className="text-xs text-muted-foreground">{ROLE_LABELS[role]}</p>
           </div>
         )}

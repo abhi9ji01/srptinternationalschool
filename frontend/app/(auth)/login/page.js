@@ -10,22 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth-context";
 
-const DEMO = [
-  ["Super Admin", "superadmin@school.com", "super123"],
-  ["Admin", "admin@school.com", "admin123"],
-  ["Teacher", "teacher@school.com", "teacher123"],
-  ["Student", "student@school.com", "student123"],
-  ["Parent", "parent@school.com", "parent123"],
-  ["Accountant", "accountant@school.com", "accountant123"],
-  ["Librarian", "librarian@school.com", "librarian123"],
-  ["HR Manager", "hr@school.com", "hr123"],
-  ["Warden", "warden@school.com", "warden123"],
-  ["Transport", "transport@school.com", "transport123"],
-  ["Health", "health@school.com", "health123"],
-  ["Security", "security@school.com", "security123"],
-  ["Canteen", "canteen@school.com", "canteen123"],
-];
-
 function LoginPage() {
   const { login, homeFor } = useAuth();
   const router = useRouter();
@@ -55,16 +39,11 @@ function LoginPage() {
     }
   }
 
-  function quick(em, pw) {
-    setEmail(em);
-    setPassword(pw);
-  }
-
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-center bg-primary text-primary-foreground p-12">
         <GraduationCap className="h-16 w-16 mb-6" />
-        <h1 className="text-4xl font-bold mb-3">Delhi Public School</h1>
+        <h1 className="text-4xl font-bold mb-3">SRPT International School</h1>
         <p className="text-lg opacity-90 max-w-md">
           Complete School Management System — academics, attendance, exams, fees, transport, hostel, HR and more.
         </p>
@@ -109,15 +88,12 @@ function LoginPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Demo accounts (click to fill)</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-1.5">
-              {DEMO.map(([label, em, pw]) => (
-                <button key={em} onClick={() => quick(em, pw)} type="button"
-                  className="text-left text-xs px-2 py-1.5 rounded border hover:bg-accent">
-                  <div className="font-medium">{label}</div>
-                  <div className="text-muted-foreground truncate">{em}</div>
-                </button>
-              ))}
+            <CardContent className="flex items-center justify-between gap-3 py-4">
+              <div>
+                <p className="text-sm font-medium">Need a demo account?</p>
+                <p className="text-xs text-muted-foreground">View test credentials for every role.</p>
+              </div>
+              <Button asChild variant="outline" size="sm"><Link href="/test-credentials">Test Credentials</Link></Button>
             </CardContent>
           </Card>
         </div>

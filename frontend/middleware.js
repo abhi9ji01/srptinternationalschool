@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ROUTE_ACCESS } from "@/lib/constants";
 
 const PUBLIC = [
+  "/",
+  "/test-credentials",
   "/login",
   "/login/forgot-password",
   "/login/reset-password",

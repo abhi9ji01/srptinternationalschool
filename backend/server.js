@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import authPlugin from "./src/auth/index.js";
 import registerRoutes from "./src/routes/index.js";
 import { getPool } from "./src/db.js";
+import { initChat } from "./src/socket/chat.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || "./uploads");
@@ -27,7 +28,9 @@ await app.register(cors, {
 });
 await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
 await app.register(multipart, {
-  limits: { fileSize: Number(process.env.MAX_FILE_SIZE_MB || 5) * 1024 * 1024 },
+  // Hard ceiling covers the largest per-folder limit (assignments, 20MB).
+  // Per-folder limits are still enforced in the /api/upload route.
+  limits: { fileSize: Math.max(Number(process.env.MAX_FILE_SIZE_MB || 5), 20) * 1024 * 1024 },
 });
 await app.register(fastifyStatic, { root: UPLOAD_DIR, prefix: "/uploads/" });
 
@@ -50,6 +53,9 @@ app.setErrorHandler((error, request, reply) => {
 app.get("/health", async () => ({ status: "ok", time: new Date().toISOString() }));
 
 await app.register(registerRoutes, { prefix: "/api" });
+
+// Attach Socket.io (real-time chat) to the underlying HTTP server.
+initChat(app);
 
 const port = Number(process.env.PORT || 5000);
 

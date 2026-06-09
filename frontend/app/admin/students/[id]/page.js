@@ -6,6 +6,7 @@ import AppShell from "@/components/shared/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import IdCardButton from "@/components/idcards/IdCardButton";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
@@ -22,6 +23,8 @@ export default function StudentDetail() {
     <AppShell title="Student Profile" allow={["super_admin", "admin"]}>
       <div className="flex gap-2 mb-4">
         <Button asChild variant="outline"><Link href={`/admin/students`}>← Back</Link></Button>
+        {s && <IdCardButton type="student" id={s.id} name={s.name} />}
+        {s && <Button asChild variant="outline"><Link href={`/admin/students/${s.id}/report-card`}>Report Card</Link></Button>}
       </div>
       {!s ? <p className="text-muted-foreground">Loading…</p> : (
         <div className="grid gap-4 lg:grid-cols-2">

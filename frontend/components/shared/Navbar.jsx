@@ -2,7 +2,7 @@
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Menu, Moon, Sun, User, LogOut, Settings } from "lucide-react";
+import { Menu, Moon, Sun, User, LogOut, Settings, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import NotificationBell from "./NotificationBell";
 import { useAuth } from "@/lib/auth-context";
+import { useSocket } from "@/contexts/SocketContext";
 import { ROLE_LABELS } from "@/lib/constants";
 import { navForRole } from "@/lib/navigation";
 import { initials } from "@/lib/utils";
@@ -19,8 +20,10 @@ import * as Icons from "lucide-react";
 export default function Navbar({ title }) {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { unreadCount, canChat } = useSocket();
   const router = useRouter();
   const items = navForRole(user?.role);
+  const chatHref = user?.role === "teacher" ? "/teacher/chat" : "/admin/chat";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
@@ -55,6 +58,16 @@ export default function Navbar({ title }) {
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </Button>
+        {canChat && (
+          <Button variant="ghost" size="icon" className="relative" onClick={() => router.push(chatHref)} title="Chat">
+            <MessageSquare className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </Button>
+        )}
         <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
