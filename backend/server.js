@@ -49,6 +49,8 @@ app.setErrorHandler((error, request, reply) => {
 
 app.get("/health", async () => ({ status: "ok", time: new Date().toISOString() }));
 
+app.get("/hello", async () => ({ message: "Hello World" }));
+
 await app.register(registerRoutes, { prefix: "/api" });
 
 const port = Number(process.env.PORT || 5000);
