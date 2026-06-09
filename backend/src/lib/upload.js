@@ -13,6 +13,7 @@ export const FOLDERS = {
   assignments: { resource_type: "auto", maxMB: 20, mimes: ["application/pdf", "image/"] },
   announcements: { resource_type: "auto", maxMB: 10, mimes: [] }, // any
   canteen: { resource_type: "image", maxMB: 2, mimes: ["image/"] },
+  "shop-products": { resource_type: "image", maxMB: 2, mimes: ["image/"] },
   "id-cards": { resource_type: "image", maxMB: 5, mimes: ["image/"] },
   "report-cards": { resource_type: "raw", maxMB: 5, mimes: ["application/pdf"] },
 };

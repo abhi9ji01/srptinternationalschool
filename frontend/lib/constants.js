@@ -52,6 +52,9 @@ export const ROLE_HOME = {
 // Which roles may access a path prefix. super_admin & admin can reach most areas.
 export const ROUTE_ACCESS = {
   "/admin": ["super_admin", "admin"],
+  // Shop management + fee structure are shared with the accountant.
+  "/admin/shop": ["super_admin", "admin", "accountant"],
+  "/admin/fee-structure": ["super_admin", "admin", "accountant"],
   "/teacher": ["super_admin", "admin", "teacher"],
   "/student": ["super_admin", "admin", "student"],
   "/parent": ["super_admin", "admin", "parent"],

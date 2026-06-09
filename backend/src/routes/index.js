@@ -27,6 +27,7 @@ import chat from "./chat.js";
 import reviews from "./reviews.js";
 import complaints from "./complaints.js";
 import employeeAttendance from "./employee-attendance.js";
+import shop from "./shop.js";
 
 /** Registers every API module under the parent prefix (/api). */
 export default async function registerRoutes(app) {
@@ -59,4 +60,5 @@ export default async function registerRoutes(app) {
   await app.register(reviews);
   await app.register(complaints);
   await app.register(employeeAttendance);
+  await app.register(shop);
 }

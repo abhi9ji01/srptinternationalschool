@@ -21,24 +21,120 @@ export default async function feeRoutes(app) {
   });
 
   // ---- FEE STRUCTURE ----
+  // Invoice count for a structure = invoices in the same class+category(+year).
+  const INVOICE_COUNT_SUBQUERY = `(SELECT COUNT(*) FROM fee_invoices fi
+       JOIN students st ON st.id=fi.student_id JOIN sections sec ON sec.id=st.section_id
+       WHERE fi.fee_category_id=fs.fee_category_id AND sec.class_id=fs.class_id
+       AND (fs.academic_year_id IS NULL OR fi.academic_year_id=fs.academic_year_id))`;
+
+  async function invoiceCountFor(fs, onlyStatus = null) {
+    const p = { cat: fs.fee_category_id, cls: fs.class_id, ay: fs.academic_year_id };
+    const statusClause = onlyStatus ? "AND fi.status=:st" : "";
+    if (onlyStatus) p.st = onlyStatus;
+    const r = await queryOne(
+      `SELECT COUNT(*) n FROM fee_invoices fi JOIN students st ON st.id=fi.student_id JOIN sections sec ON sec.id=st.section_id
+       WHERE fi.fee_category_id=:cat AND sec.class_id=:cls AND (:ay IS NULL OR fi.academic_year_id=:ay) ${statusClause}`, p);
+    return Number(r?.n || 0);
+  }
+
   app.get("/fees/structure", { preHandler: app.authorize(ACC) }, async (req) => {
+    const p = { sid: req.user.schoolId }; const where = ["c.school_id=:sid"];
+    if (req.query.class_id) { where.push("fs.class_id=:cls"); p.cls = req.query.class_id; }
+    if (req.query.academic_year_id) { where.push("fs.academic_year_id=:ay"); p.ay = req.query.academic_year_id; }
     return query(
-      `SELECT fs.*, c.name AS class_name, fc.name AS category_name, fc.frequency
+      `SELECT fs.*, c.name AS class_name, fc.name AS category_name, fc.frequency, ay.name AS academic_year,
+              ${INVOICE_COUNT_SUBQUERY} AS invoice_count
        FROM fee_structures fs JOIN classes c ON c.id=fs.class_id JOIN fee_categories fc ON fc.id=fs.fee_category_id
-       WHERE c.school_id=:sid ORDER BY c.name`, { sid: req.user.schoolId });
+       LEFT JOIN academic_years ay ON ay.id=fs.academic_year_id
+       WHERE ${where.join(" AND ")} ORDER BY c.name, fc.name`, p);
   });
 
   app.post("/fees/structure", { preHandler: app.authorize(ACC) }, async (req, reply) => {
     const b = req.body || {};
+    if (!b.class_id || !b.fee_category_id || b.amount == null) return reply.code(400).send({ error: "class_id, fee_category_id and amount are required" });
     const r = await query(
       `INSERT INTO fee_structures (class_id, fee_category_id, amount, due_date, academic_year_id)
        VALUES (:c,:cat,:amt,:due,:ay)`,
       { c: b.class_id, cat: b.fee_category_id, amt: b.amount, due: b.due_date || null, ay: b.academic_year_id || null });
-    return reply.code(201).send({ id: r.insertId });
+    await audit({ ...reqMeta(req), schoolId: req.user.schoolId, userId: req.user.id, action: "create", module: "fee_structures", recordId: r.insertId });
+    return reply.code(201).send({ id: r.insertId, success: true });
   });
 
-  app.delete("/fees/structure/:id", { preHandler: app.authorize(ACC) }, async (req) => {
+  // Create the same fee for multiple classes at once.
+  app.post("/fees/structure/bulk", { preHandler: app.authorize(ACC) }, async (req, reply) => {
+    const b = req.body || {};
+    if (!Array.isArray(b.class_ids) || !b.class_ids.length || !b.fee_category_id || b.amount == null) {
+      return reply.code(400).send({ error: "class_ids[], fee_category_id and amount are required" });
+    }
+    let created = 0;
+    for (const classId of b.class_ids) {
+      await query(`INSERT INTO fee_structures (class_id, fee_category_id, amount, due_date, academic_year_id) VALUES (:c,:cat,:amt,:due,:ay)`,
+        { c: classId, cat: b.fee_category_id, amt: b.amount, due: b.due_date || null, ay: b.academic_year_id || null });
+      created++;
+    }
+    await audit({ ...reqMeta(req), schoolId: req.user.schoolId, userId: req.user.id, action: "bulk_create", module: "fee_structures", newValue: { created } });
+    return reply.code(201).send({ success: true, created });
+  });
+
+  // Update amount for multiple structures at once (admin).
+  app.put("/fees/structure/bulk-update", { preHandler: app.authorize(ADMINS) }, async (req, reply) => {
+    const b = req.body || {};
+    if (!Array.isArray(b.ids) || !b.ids.length || b.amount == null) return reply.code(400).send({ error: "ids[] and amount are required" });
+    let updated = 0;
+    for (const id of b.ids) {
+      const fs = await queryOne(`SELECT fs.* FROM fee_structures fs JOIN classes c ON c.id=fs.class_id WHERE fs.id=:id AND c.school_id=:sid`, { id, sid: req.user.schoolId });
+      if (!fs) continue;
+      await query(`INSERT INTO fee_structure_changes (fee_structure_id, changed_by, old_amount, new_amount, old_due_date, new_due_date, reason)
+                   VALUES (:fs,:by,:oa,:na,:od,:nd,:reason)`,
+        { fs: id, by: req.user.id, oa: fs.amount, na: b.amount, od: fs.due_date, nd: fs.due_date, reason: b.reason || "Bulk update" });
+      await query(`UPDATE fee_structures SET amount=:amt WHERE id=:id`, { amt: b.amount, id });
+      updated++;
+    }
+    await audit({ ...reqMeta(req), schoolId: req.user.schoolId, userId: req.user.id, action: "bulk_update", module: "fee_structures", newValue: { updated } });
+    return { success: true, updated };
+  });
+
+  // Edit amount / due date (warns if invoices already exist unless confirmed).
+  app.put("/fees/structure/:id", { preHandler: app.authorize(ACC) }, async (req, reply) => {
+    const fs = await queryOne(`SELECT fs.* FROM fee_structures fs JOIN classes c ON c.id=fs.class_id WHERE fs.id=:id AND c.school_id=:sid`,
+      { id: req.params.id, sid: req.user.schoolId });
+    if (!fs) return reply.code(404).send({ error: "Fee structure not found" });
+    const b = req.body || {};
+    const invoiceCount = await invoiceCountFor(fs);
+    if (invoiceCount > 0 && !b.confirm) {
+      return { warning: `${invoiceCount} invoice(s) already generated for this fee. Updating will not affect existing invoices. Continue?`, invoice_count: invoiceCount };
+    }
+    const newAmount = b.amount != null ? b.amount : fs.amount;
+    const newDue = b.due_date !== undefined ? (b.due_date || null) : fs.due_date;
+    await query(`INSERT INTO fee_structure_changes (fee_structure_id, changed_by, old_amount, new_amount, old_due_date, new_due_date, reason)
+                 VALUES (:fs,:by,:oa,:na,:od,:nd,:reason)`,
+      { fs: fs.id, by: req.user.id, oa: fs.amount, na: newAmount, od: fs.due_date, nd: newDue, reason: b.reason || null });
+    await query(`UPDATE fee_structures SET amount=:amt, due_date=:due WHERE id=:id`, { amt: newAmount, due: newDue, id: fs.id });
+    await audit({ ...reqMeta(req), schoolId: req.user.schoolId, userId: req.user.id, action: "update", module: "fee_structures", recordId: fs.id, oldValue: { amount: fs.amount }, newValue: { amount: newAmount } });
+    return { success: true };
+  });
+
+  // Change history for a structure.
+  app.get("/fees/structure/:id/history", { preHandler: app.authorize(ACC) }, async (req) => {
+    return query(
+      `SELECT fsc.*, u.name AS changed_by_name FROM fee_structure_changes fsc
+       LEFT JOIN users u ON u.id=fsc.changed_by WHERE fsc.fee_structure_id=:id ORDER BY fsc.changed_at DESC`,
+      { id: req.params.id });
+  });
+
+  // Delete (admin only): block if paid invoices exist; warn if pending exist.
+  app.delete("/fees/structure/:id", { preHandler: app.authorize(ADMINS) }, async (req, reply) => {
+    const fs = await queryOne(`SELECT fs.* FROM fee_structures fs JOIN classes c ON c.id=fs.class_id WHERE fs.id=:id AND c.school_id=:sid`,
+      { id: req.params.id, sid: req.user.schoolId });
+    if (!fs) return reply.code(404).send({ error: "Fee structure not found" });
+    const paid = await invoiceCountFor(fs, "paid");
+    if (paid > 0) return reply.code(409).send({ error: `Cannot delete: ${paid} paid invoice(s) exist for this fee.` });
+    const total = await invoiceCountFor(fs);
+    if (total > 0 && !req.query.confirm) {
+      return reply.code(409).send({ error: `${total} pending invoice(s) exist for this fee. Re-send with ?confirm=1 to delete anyway.`, invoice_count: total });
+    }
     await query(`DELETE FROM fee_structures WHERE id=:id`, { id: req.params.id });
+    await audit({ ...reqMeta(req), schoolId: req.user.schoolId, userId: req.user.id, action: "delete", module: "fee_structures", recordId: Number(req.params.id) });
     return { success: true };
   });
 

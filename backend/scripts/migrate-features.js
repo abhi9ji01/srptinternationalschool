@@ -200,6 +200,116 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
   console.log("  ✓ employee_attendance ready");
 
+  console.log("Feature 12 — school shop");
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS shop_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      type ENUM('dress','course','other') NOT NULL,
+      description TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_shopcat_school (school_id),
+      FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS shop_products (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT NOT NULL,
+      category_id INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      price DECIMAL(10,2) NOT NULL,
+      stock_quantity INT DEFAULT 0,
+      is_unlimited_stock BOOLEAN DEFAULT FALSE,
+      type ENUM('dress','course','other') NOT NULL,
+      images JSON,
+      thumbnail_url VARCHAR(500),
+      cloudinary_public_ids JSON,
+      sizes JSON,
+      course_duration VARCHAR(100),
+      course_start_date DATE,
+      course_end_date DATE,
+      course_instructor VARCHAR(255),
+      is_active BOOLEAN DEFAULT TRUE,
+      created_by INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_shopprod_school (school_id),
+      INDEX idx_shopprod_type (type),
+      FOREIGN KEY (category_id) REFERENCES shop_categories(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS shop_orders (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      school_id INT NOT NULL,
+      order_number VARCHAR(50) NOT NULL UNIQUE,
+      buyer_id INT NOT NULL,
+      buyer_type ENUM('student','parent') NOT NULL,
+      total_amount DECIMAL(10,2) NOT NULL,
+      payment_mode ENUM('online','cash','upi') NOT NULL,
+      payment_status ENUM('pending','paid','failed') DEFAULT 'pending',
+      payment_transaction_id VARCHAR(255),
+      overall_status ENUM('pending','confirmed','partially_delivered','completed','cancelled') DEFAULT 'pending',
+      notes TEXT,
+      ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_shoporder_school (school_id),
+      INDEX idx_shoporder_buyer (buyer_id),
+      FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS shop_order_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      order_id INT NOT NULL,
+      product_id INT NOT NULL,
+      product_name VARCHAR(255) NOT NULL,
+      product_type ENUM('dress','course','other'),
+      size VARCHAR(20),
+      quantity INT NOT NULL DEFAULT 1,
+      unit_price DECIMAL(10,2) NOT NULL,
+      total_price DECIMAL(10,2) NOT NULL,
+      purchase_code VARCHAR(20) NOT NULL UNIQUE,
+      status ENUM('pending','confirmed','ready','delivered','cancelled') DEFAULT 'pending',
+      delivered_by INT DEFAULT NULL,
+      delivered_at TIMESTAMP NULL,
+      delivery_notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_shopitem_order (order_id),
+      INDEX idx_shopitem_code (purchase_code),
+      FOREIGN KEY (order_id) REFERENCES shop_orders(id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES shop_products(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS purchase_code_scans (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      purchase_code VARCHAR(20) NOT NULL,
+      order_item_id INT NOT NULL,
+      scanned_by INT NOT NULL,
+      scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      action ENUM('verified','delivered','rejected'),
+      notes TEXT,
+      INDEX idx_scan_code (purchase_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  console.log("  ✓ shop tables ready (categories, products, orders, items, scans)");
+
+  console.log("Feature 13 — fee structure change history");
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS fee_structure_changes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      fee_structure_id INT NOT NULL,
+      changed_by INT NOT NULL,
+      old_amount DECIMAL(10,2),
+      new_amount DECIMAL(10,2),
+      old_due_date DATE,
+      new_due_date DATE,
+      reason TEXT,
+      changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_fsc_structure (fee_structure_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+  console.log("  ✓ fee_structure_changes ready");
+
   await conn.end();
   console.log("\n✓ Feature migration complete.");
   process.exit(0);

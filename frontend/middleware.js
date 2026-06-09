@@ -33,7 +33,11 @@ export function middleware(req) {
     return NextResponse.redirect(url);
   }
 
-  const prefix = Object.keys(ROUTE_ACCESS).find((p) => pathname.startsWith(p));
+  // Match the most specific (longest) prefix so e.g. "/admin/shop" can grant
+  // accountant access even though "/admin" is admin-only.
+  const prefix = Object.keys(ROUTE_ACCESS)
+    .filter((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p))
+    .sort((a, b) => b.length - a.length)[0];
   if (prefix && role && !ROUTE_ACCESS[prefix].includes(role)) {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
   }

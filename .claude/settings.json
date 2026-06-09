@@ -7,7 +7,10 @@
       "Read(//tmp/**)",
       "Bash(curl -s -m 3 http://localhost:5099/health)",
       "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\\\\n\" -X POST \"http://localhost:5099/api/upload?folder=student-photos\")",
-      "Bash(node --check d:/projects/srptinternationalschool/frontend/lib/navigation.js)"
+      "Bash(node --check d:/projects/srptinternationalschool/frontend/lib/navigation.js)",
+      "Bash(curl -s -m 3 -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5099/api/shop/reports)",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(wait)"
     ]
   }
 }
