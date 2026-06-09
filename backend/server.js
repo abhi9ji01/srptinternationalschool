@@ -7,7 +7,6 @@ import rateLimit from "@fastify/rate-limit";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-
 import authPlugin from "./src/auth/index.js";
 import registerRoutes from "./src/routes/index.js";
 import { getPool } from "./src/db.js";
