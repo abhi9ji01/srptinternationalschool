@@ -1,7 +1,4 @@
-'use client';
 import "./globals.css";
-import { useEffect } from "react";
-
 import Providers from "@/components/providers";
 
 export const metadata = {
@@ -17,13 +14,6 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }) {
-   useEffect(() => {
-    if (typeof window !== "undefined") {
-      import("eruda").then((eruda) => {
-        eruda.default.init();
-      });
-    }
-  }, []);
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
